@@ -1,0 +1,73 @@
+# Booking API: manual requests for the WebStorm HTTP Client.
+# Start the app first: npm run start:dev
+# Run a single request with the gutter ▶ icon, or the whole file with "Run All".
+
+@baseUrl = http://localhost:3000
+
+### Create activity -> 201 + created object
+POST {{baseUrl}}/activities
+Content-Type: application/json
+
+{
+  "title": "Night dive",
+  "type": "diving",
+  "price": 9000,
+  "capacity": 6
+}
+
+> {%
+  // Save the new id so the requests below can use it
+  client.global.set("activityId", response.body.id);
+  client.test("Activity created", () => {
+    client.assert(response.status === 201, "Expected 201, got " + response.status);
+  });
+%}
+
+### List all activities -> 200
+GET {{baseUrl}}/activities
+
+### Get one activity (id from the create request) -> 200
+GET {{baseUrl}}/activities/{{activityId}}
+
+### Update price only (partial update) -> 200
+PATCH {{baseUrl}}/activities/{{activityId}}
+Content-Type: application/json
+
+{
+  "price": 9500
+}
+
+### Not found -> 404
+GET {{baseUrl}}/activities/999999
+
+### Invalid id (not an integer) -> 400
+GET {{baseUrl}}/activities/abc
+
+### Invalid body -> 400 with validation errors
+# "bus" is not an ActivityType, price < 0, capacity is missing
+POST {{baseUrl}}/activities
+Content-Type: application/json
+
+{
+  "title": "X",
+  "type": "bus",
+  "price": -1
+}
+
+### Unknown field is stripped (whitelist: true) -> 201, "isAdmin" is ignored
+POST {{baseUrl}}/activities
+Content-Type: application/json
+
+{
+  "title": "Old town tour",
+  "type": "tour",
+  "price": 2500,
+  "capacity": 20,
+  "isAdmin": true
+}
+
+### Delete activity -> 204
+DELETE {{baseUrl}}/activities/{{activityId}}
+
+### Deleted activity is gone -> 404
+GET {{baseUrl}}/activities/{{activityId}}
