@@ -4,6 +4,8 @@
 
 @baseUrl = http://localhost:3000
 
+# ─── Activity ─────────────────────────────────────────────────────────────
+
 ### Create activity -> 201 + created object
 POST {{baseUrl}}/activities
 Content-Type: application/json
@@ -71,3 +73,147 @@ DELETE {{baseUrl}}/activities/{{activityId}}
 
 ### Deleted activity is gone -> 404
 GET {{baseUrl}}/activities/{{activityId}}
+
+# ─── Bookings ─────────────────────────────────────────────────────────────
+
+# Any date in the future; update it if it becomes past
+@bookingDate = 2027-06-15
+
+### Create an activity for booking tests (capacity 6) -> 201
+POST {{baseUrl}}/activities
+Content-Type: application/json
+
+{
+  "title": "Booking test dive",
+  "type": "diving",
+  "price": 9000,
+  "capacity": 6
+}
+
+> {%
+  client.global.set("bookingActivityId", response.body.id);
+%}
+
+### Book 2 seats -> 201, totalPrice = 18000, status = confirmed
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "{{bookingDate}}",
+  "customerName": "Anna",
+  "customerEmail": "anna@example.com",
+  "seats": 2
+}
+
+> {%
+  client.global.set("bookingId", response.body.id);
+  client.test("Booking created", () => {
+    client.assert(response.status === 201, "Expected 201, got " + response.status);
+    client.assert(response.body.totalPrice === 18000, "Wrong totalPrice");
+  });
+%}
+
+### Get the booking -> 200, includes nested "activity"
+GET {{baseUrl}}/bookings/{{bookingId}}
+
+### List all bookings -> 200
+GET {{baseUrl}}/bookings
+
+### Too many seats (4 left, asking 5) -> 409 "Only 4 seats left"
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "{{bookingDate}}",
+  "customerName": "Bob",
+  "customerEmail": "bob@example.com",
+  "seats": 5
+}
+
+### Date in the past -> 400
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "2020-01-01",
+  "customerName": "Bob",
+  "customerEmail": "bob@example.com",
+  "seats": 1
+}
+
+### Activity does not exist -> 404
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": 999999,
+  "date": "{{bookingDate}}",
+  "customerName": "Bob",
+  "customerEmail": "bob@example.com",
+  "seats": 1
+}
+
+### Invalid body (bad email, impossible date, seats = 0) -> 400
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "2027-02-30",
+  "customerName": "Bob",
+  "customerEmail": "not-an-email",
+  "seats": 0
+}
+
+### Server-side fields are rejected (forbidNonWhitelisted) -> 400
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "{{bookingDate}}",
+  "customerName": "Bob",
+  "customerEmail": "bob@example.com",
+  "seats": 1,
+  "totalPrice": 1
+}
+
+### Update contact details -> 200
+PATCH {{baseUrl}}/bookings/{{bookingId}}
+Content-Type: application/json
+
+{
+  "customerName": "Anna Smith"
+}
+
+### Seats cannot be changed via PATCH -> 400
+PATCH {{baseUrl}}/bookings/{{bookingId}}
+Content-Type: application/json
+
+{
+  "seats": 6
+}
+
+### Activity with bookings cannot be deleted -> 409
+DELETE {{baseUrl}}/activities/{{bookingActivityId}}
+
+### Cancel the booking -> 200, status = cancelled
+PATCH {{baseUrl}}/bookings/{{bookingId}}/cancel
+
+### Cancel again -> 409
+PATCH {{baseUrl}}/bookings/{{bookingId}}/cancel
+
+### Seats are free again: book all 6 -> 201
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "activityId": {{bookingActivityId}},
+  "date": "{{bookingDate}}",
+  "customerName": "Group",
+  "customerEmail": "group@example.com",
+  "seats": 6
+}

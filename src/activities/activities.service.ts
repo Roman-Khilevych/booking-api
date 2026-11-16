@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Booking } from '@/bookings/entities/booking.entity.js';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateActivityDto } from './dto/create-activity.dto.js';
@@ -35,6 +40,17 @@ export class ActivitiesService {
   }
 
   async remove(id: number) {
-    await this.repo.remove(await this.findOne(id));
+    const activity = await this.findOne(id);
+
+    const bookingsCount = await this.repo.manager.countBy(Booking, {
+      activityId: id,
+    });
+    if (bookingsCount > 0) {
+      throw new ConflictException(
+        `Activity ${id} has bookings and cannot be deleted`,
+      );
+    }
+
+    await this.repo.remove(activity);
   }
 }
