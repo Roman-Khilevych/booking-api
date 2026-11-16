@@ -30,7 +30,7 @@ export class ActivitiesService {
   async update(id: number, updateActivityDto: UpdateActivityDto) {
     const activity = await this.findOne(id);
     this.repo.merge(activity, updateActivityDto);
-    
+
     return this.repo.save(activity);
   }
 

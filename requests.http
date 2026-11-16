@@ -54,7 +54,7 @@ Content-Type: application/json
   "price": -1
 }
 
-### Unknown field is stripped (whitelist: true) -> 201, "isAdmin" is ignored
+### Unknown field is rejected (forbidNonWhitelisted) -> 400
 POST {{baseUrl}}/activities
 Content-Type: application/json
 
