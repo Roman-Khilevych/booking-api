@@ -1,8 +1,11 @@
+import { Booking } from '@/bookings/entities/booking.entity.js';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
+  type Relation,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -22,4 +25,7 @@ export class Activity {
   @Column('int') capacity: number;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
+
+  @OneToMany(() => Booking, (booking) => booking.activity)
+  bookings: Relation<Booking[]>;
 }
